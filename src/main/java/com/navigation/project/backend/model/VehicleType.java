@@ -1,4 +1,7 @@
 package com.navigation.project.backend.model;
 
-public class VehicleType {
+public enum VehicleType {
+    CAR,
+    BUS,
+    WALK
 }
