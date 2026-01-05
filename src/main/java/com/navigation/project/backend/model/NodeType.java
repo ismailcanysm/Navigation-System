@@ -1,4 +1,6 @@
 package com.navigation.project.backend.model;
 
-public class NodeType {
+public enum NodeType {
+    CITY,       // Normal Şehir
+    BUS_STOP    // Otobüs Durağı
 }
