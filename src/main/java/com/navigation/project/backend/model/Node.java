@@ -24,8 +24,6 @@ public class Node {
         return name + " (" + type + ")";
     }
 
-    // HashMap ve rota hesaplamaları için hayati önem taşır.
-    // İsmi aynı olan şehirleri "aynı" kabul eder.
     @Override
     public boolean equals(Object o){
         if (this == o) return true;

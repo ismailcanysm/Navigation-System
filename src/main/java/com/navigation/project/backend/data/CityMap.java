@@ -59,11 +59,18 @@ public class CityMap {
     }
 
     // Haritayı sıfırlamak için (Testlerde işe yarar)
-    public void clear(){
+    public void clearAll(){
         nodes.clear();
         edges.clear();
     }
 
+    public void removeEdge(Edge edge) {
+        if (edges.remove(edge)) {
+            System.out.println("Yol silindi.");
+        } else {
+            System.out.println("Böyle bir yol yok");
+        }
+    }
 }
 
 

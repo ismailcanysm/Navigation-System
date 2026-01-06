@@ -24,7 +24,7 @@ public class MapBuilder {
     }
 
     // 2. Yol Ekleme Zinciri (İsimden isme yol çeker)
-    public MapBuilder addRoad(String fromName, String toName, double distance, double speedLimit){
+    public MapBuilder addRoad(String fromName, String toName, double distance, int speedLimit){
         Node source = findNode(fromName);
         Node destination = findNode(toName);
 
@@ -59,27 +59,3 @@ public class MapBuilder {
         return map;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
