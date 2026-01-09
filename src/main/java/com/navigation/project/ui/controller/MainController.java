@@ -3,657 +3,832 @@ package com.navigation.project.ui.controller;
 import com.navigation.project.backend.data.CityMap;
 import com.navigation.project.backend.facade.NavigationFacade;
 import com.navigation.project.backend.model.*;
+import com.navigation.project.backend.observer.ITrafficObserver;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 /**
- * MainController - Ana UI Kontrolcüsü
+ * MainController - Observer Pattern ile güncellenmiş UI kontrolcüsü
  *
- * AMAÇ:
- * Tüm UI bileşenlerini oluşturur ve yönetir.
- * Backend ile UI arasında köprü görevi görür.
- *
- * NE İŞE YARAR:
- * - Admin ve User panellerini oluşturur
- * - Şehir ve yol tablolarını yönetir
- * - Rota hesaplama işlemlerini yapar
- * - Admin yönetim işlemlerini koordine eder
- * - Bildirimleri gösterir
- * - NavigationFacade ile backend'e erişir
- *
- * İLİŞKİLİ SINIFLAR: NavigationFacade, CityMap, Node, Edge
- *
- * UI BİLEŞENLERİ:
- * - BorderPane: Ana layout
- * - TabPane: Admin/User sekmeler
- * - TableView: Şehir ve yol tabloları
- * - ComboBox: Şehir seçimi
- * - RadioButton: Araç seçimi
- * - TextArea: Sonuç gösterimi
- * - VBox: Bildirim paneli
- *
- * ADMIN PANELİ İŞLEMLERİ:
- * - addNode(): Yeni şehir ekler
- * - addEdge(): Yeni yol ekler (çift yönlü)
- * - closeRoad(): Yolu kapatır
- * - setConstruction(): Yolu tadidata alır
- * - openRoad(): Yolu açar
- * - deleteEdge(): Yolu siler
- *
- * USER PANELİ İŞLEMLERİ:
- * - calculateRoute(): Rota hesaplar ve gösterir
- * - Şehirleri görüntüler (read-only)
- * - Yolları görüntüler (read-only)
- *
- * YARDIMCI METODLAR:
- * - refreshAllTables(): Tüm tabloları günceller
- * - updateComboBoxes(): Dropdown listelerini günceller
- * - addNotification(): Bildirim ekler
- * - findNode(): İsme göre node bulur
- * - findEdge(): Node'lara göre edge bulur
- *
- * İÇ SINIFLAR:
- * - NodeDisplay: Tablo için node veri modeli
- * - EdgeDisplay: Tablo için edge veri modeli
- *
- * KULLANIM AKIŞI:
- * 1. Constructor: Backend başlat, UI oluştur
- * 2. Admin: Şehir/yol ekle
- * 3. User: Rota hesapla
- * 4. Tablolar otomatik güncellenir
- * 5. Bildirimler alt panelde gösterilir
+ * GÜNCELLEMELER:
+ * - ITrafficObserver interface implement eder
+ * - Constructor'da facade.addObserver(this) ile sisteme kaydolur
+ * - onRoadStatusChanged() ve onSpeedLimitChanged() metodları otomatik bildirim gösterir
+ * - Command pattern ile entegre çalışır
  */
+public class MainController implements ITrafficObserver {
 
-/**
- * MainController - SENARYO UYUMLU
- * @author Kişi 2
- */
-public class MainController {
-
-    private BorderPane root;
+    private Stage stage;
     private NavigationFacade facade;
-    private CityMap cityMap;
+    private CityMap map;
 
+    // Admin Panel Components
+    private TextField nodeNameField;
+    private ComboBox<NodeType> nodeTypeCombo;
+    private ComboBox<String> edgeFromCombo, edgeToCombo;
+    private TextField edgeDistanceField, edgeSpeedField;
+    private ComboBox<String> manageEdgeCombo;
     private TableView<NodeDisplay> adminNodeTable;
     private TableView<EdgeDisplay> adminEdgeTable;
-    private TextField nodeNameField;
-    private ComboBox<String> edgeSourceCombo;
-    private ComboBox<String> edgeDestCombo;
-    private TextField edgeDistanceField;
-    private TextField edgeSpeedField;
-    private ComboBox<String> manageEdgeCombo;
 
-    private TableView<NodeDisplay> userNodeTable;
-    private TableView<EdgeDisplay> userEdgeTable;
-    private ComboBox<String> startCityCombo;
-    private ComboBox<String> endCityCombo;
+    // User Panel Components
+    private ComboBox<String> startCityCombo, endCityCombo;
     private RadioButton carRadio, busRadio, walkRadio;
     private TextArea resultArea;
+    private TableView<NodeDisplay> userNodeTable;
+    private TableView<EdgeDisplay> userEdgeTable;
 
+    // Notification Panel
     private VBox notificationBox;
 
-    public MainController() {
+    public MainController(Stage stage) {
+        this.stage = stage;
         initializeBackend();
         createUI();
+
+        // ★ OBSERVER PATTERN: MainController'ı observer olarak kaydet ★
+        facade.addObserver(this);
+        System.out.println("MainController Observer olarak kaydedildi");
     }
+
+    // =========================================================================
+    // BACKEND INITIALIZATION
+    // =========================================================================
 
     private void initializeBackend() {
         facade = new NavigationFacade();
-        cityMap = CityMap.getInstance();
-        cityMap.clearAll();
-        System.out.println("[MainController] Boş sistem başlatıldı.");
+        map = CityMap.getInstance();
+        map.clearAll();
+        System.out.println("Backend başlatıldı.");
     }
+
+    // =========================================================================
+    // UI CREATION
+    // =========================================================================
 
     private void createUI() {
-        root = new BorderPane();
-        root.setTop(createHeader());
-        root.setCenter(createTabPane());
-        root.setBottom(createNotificationPanel());
-    }
+        BorderPane root = new BorderPane();
 
-    private VBox createHeader() {
-        VBox header = new VBox(5);
-        header.setStyle("-fx-background-color: #2c3e50; -fx-padding: 15;");
-        header.setAlignment(Pos.CENTER);
+        // Top: Title
+        Label titleLabel = new Label("NAVİGASYON SİSTEMİ - 9 DESIGN PATTERNS");
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+        titleLabel.setStyle("-fx-padding: 10; -fx-background-color: #2196F3; -fx-text-fill: white;");
+        titleLabel.setMaxWidth(Double.MAX_VALUE);
+        titleLabel.setAlignment(Pos.CENTER);
+        root.setTop(titleLabel);
 
-        Label title = new Label("🗺️ NAVİGASYON SİSTEMİ");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
-
-        Label subtitle = new Label("Dinamik Node & Edge Yönetimi - 10 Design Pattern Demo");
-        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #ecf0f1;");
-
-        header.getChildren().addAll(title, subtitle);
-        return header;
-    }
-
-    private TabPane createTabPane() {
+        // Center: TabPane
         TabPane tabPane = new TabPane();
-        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.getTabs().addAll(
+                createAdminTab(),
+                createUserTab()
+        );
+        root.setCenter(tabPane);
 
-        Tab adminTab = new Tab("🔒 ADMİN PANELİ");
-        adminTab.setContent(createAdminPanel());
+        // Bottom: Notification Panel
+        notificationBox = new VBox(5);
+        notificationBox.setPadding(new Insets(10));
+        notificationBox.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1 0 0 0;");
 
-        Tab userTab = new Tab("👤 KULLANICI PANELİ");
-        userTab.setContent(createUserPanel());
+        Label notifTitle = new Label("📢 BİLDİRİMLER");
+        notifTitle.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
-        tabPane.getTabs().addAll(adminTab, userTab);
-        return tabPane;
+        ScrollPane notifScroll = new ScrollPane(notificationBox);
+        notifScroll.setFitToWidth(true);
+        notifScroll.setPrefHeight(120);
+        notifScroll.setStyle("-fx-background-color: transparent;");
+
+        VBox bottomBox = new VBox(5, notifTitle, notifScroll);
+        bottomBox.setPadding(new Insets(10));
+        root.setBottom(bottomBox);
+
+        Scene scene = new Scene(root, 1200, 800);
+        stage.setScene(scene);
+        stage.setTitle("Navigasyon Sistemi");
+        stage.show();
     }
 
-    private VBox createAdminPanel() {
-        VBox panel = new VBox(15);
-        panel.setPadding(new Insets(15));
-        panel.setStyle("-fx-background-color: #ecf0f1;");
+    // =========================================================================
+    // ADMIN TAB
+    // =========================================================================
 
-        Label nodeLabel = new Label("📍 ŞEHİRLER (NODES)");
-        nodeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+    private Tab createAdminTab() {
+        Tab tab = new Tab("👨‍💼 Admin Paneli");
+        tab.setClosable(false);
 
-        adminNodeTable = createNodeTable();
-        adminNodeTable.setPrefHeight(150);
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(15));
 
-        HBox addNodeBox = new HBox(10);
-        addNodeBox.setAlignment(Pos.CENTER_LEFT);
+        // Node Management
+        content.getChildren().add(createNodeManagementSection());
+
+        // Edge Management
+        content.getChildren().add(createEdgeManagementSection());
+
+        // Road Management
+        content.getChildren().add(createRoadManagementSection());
+
+        // Tables
+        HBox tables = new HBox(10);
+        tables.getChildren().addAll(
+                createAdminNodeTable(),
+                createAdminEdgeTable()
+        );
+        content.getChildren().add(tables);
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        tab.setContent(scroll);
+
+        return tab;
+    }
+
+    private VBox createNodeManagementSection() {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-border-color: #2196F3; -fx-border-width: 2; -fx-padding: 10; -fx-background-color: #E3F2FD;");
+
+        Label title = new Label("🏙️ ŞEHİR YÖNETİMİ");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+
+        HBox inputBox = new HBox(10);
         nodeNameField = new TextField();
-        nodeNameField.setPromptText("Şehir adı...");
+        nodeNameField.setPromptText("Şehir adı");
         nodeNameField.setPrefWidth(200);
-        Button addNodeBtn = new Button("➕ ŞEHİR EKLE");
-        addNodeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
-        addNodeBtn.setOnAction(e -> addNode());
-        addNodeBox.getChildren().addAll(new Label("Şehir Adı:"), nodeNameField, addNodeBtn);
 
-        Separator separator1 = new Separator();
+        nodeTypeCombo = new ComboBox<>();
+        nodeTypeCombo.getItems().addAll(NodeType.values());
+        nodeTypeCombo.setValue(NodeType.CITY);
 
-        Label edgeLabel = new Label("🛣️ YOLLAR (EDGES)");
-        edgeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        Button addBtn = new Button("➕ Şehir Ekle");
+        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
+        addBtn.setOnAction(e -> addNode());
 
-        adminEdgeTable = createEdgeTable();
-        adminEdgeTable.setPrefHeight(150);
-
-        HBox addEdgeBox = new HBox(10);
-        addEdgeBox.setAlignment(Pos.CENTER_LEFT);
-        edgeSourceCombo = new ComboBox<>();
-        edgeSourceCombo.setPromptText("Kaynak");
-        edgeSourceCombo.setPrefWidth(120);
-        edgeDestCombo = new ComboBox<>();
-        edgeDestCombo.setPromptText("Hedef");
-        edgeDestCombo.setPrefWidth(120);
-        edgeDistanceField = new TextField();
-        edgeDistanceField.setPromptText("km");
-        edgeDistanceField.setPrefWidth(60);
-        edgeSpeedField = new TextField();
-        edgeSpeedField.setPromptText("km/h");
-        edgeSpeedField.setPrefWidth(60);
-        Button addEdgeBtn = new Button("➕ YOL EKLE");
-        addEdgeBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;");
-        addEdgeBtn.setOnAction(e -> addEdge());
-        addEdgeBox.getChildren().addAll(
-                new Label("Kaynak:"), edgeSourceCombo,
-                new Label("→ Hedef:"), edgeDestCombo,
-                new Label("Mesafe:"), edgeDistanceField,
-                new Label("Hız:"), edgeSpeedField,
-                addEdgeBtn
+        inputBox.getChildren().addAll(
+                new Label("Şehir:"), nodeNameField,
+                new Label("Tip:"), nodeTypeCombo,
+                addBtn
         );
 
-        Separator separator2 = new Separator();
+        box.getChildren().addAll(title, inputBox);
+        return box;
+    }
 
-        Label manageLabel = new Label("⚙️ YOL YÖNETİMİ");
-        manageLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+    private VBox createEdgeManagementSection() {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-border-color: #FF9800; -fx-border-width: 2; -fx-padding: 10; -fx-background-color: #FFF3E0;");
 
-        HBox manageEdgeBox = new HBox(10);
-        manageEdgeBox.setAlignment(Pos.CENTER_LEFT);
+        Label title = new Label("🛣️ YOL YÖNETİMİ");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+
+        HBox inputBox = new HBox(10);
+        edgeFromCombo = new ComboBox<>();
+        edgeFromCombo.setPromptText("Başlangıç");
+        edgeFromCombo.setPrefWidth(150);
+
+        edgeToCombo = new ComboBox<>();
+        edgeToCombo.setPromptText("Bitiş");
+        edgeToCombo.setPrefWidth(150);
+
+        edgeDistanceField = new TextField();
+        edgeDistanceField.setPromptText("Mesafe (km)");
+        edgeDistanceField.setPrefWidth(100);
+
+        edgeSpeedField = new TextField();
+        edgeSpeedField.setPromptText("Hız (km/h)");
+        edgeSpeedField.setPrefWidth(100);
+
+        Button addBtn = new Button("➕ Yol Ekle");
+        addBtn.setStyle("-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-weight: bold;");
+        addBtn.setOnAction(e -> addEdge());
+
+        inputBox.getChildren().addAll(
+                new Label("Başlangıç:"), edgeFromCombo,
+                new Label("Bitiş:"), edgeToCombo,
+                new Label("Mesafe:"), edgeDistanceField,
+                new Label("Hız:"), edgeSpeedField,
+                addBtn
+        );
+
+        box.getChildren().addAll(title, inputBox);
+        return box;
+    }
+
+    private VBox createRoadManagementSection() {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-border-color: #F44336; -fx-border-width: 2; -fx-padding: 10; -fx-background-color: #FFEBEE;");
+
+        Label title = new Label("⚙️ YOL DURUMU YÖNETİMİ");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+
+        HBox inputBox = new HBox(10);
         manageEdgeCombo = new ComboBox<>();
-        manageEdgeCombo.setPromptText("Yol seçin...");
-        manageEdgeCombo.setPrefWidth(250);
+        manageEdgeCombo.setPromptText("Yol seçin");
+        manageEdgeCombo.setPrefWidth(300);
 
-        Button closedBtn = new Button("🚫 KAPAT");
-        closedBtn.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-font-weight: bold;");
-        closedBtn.setOnAction(e -> closeRoad());
+        Button closeBtn = new Button("🚫 KAPAT");
+        closeBtn.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-weight: bold;");
+        closeBtn.setOnAction(e -> closeRoad());
 
         Button constructionBtn = new Button("🚧 TADİLATTA");
-        constructionBtn.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold;");
+        constructionBtn.setStyle("-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-weight: bold;");
         constructionBtn.setOnAction(e -> setConstruction());
 
         Button openBtn = new Button("✅ AÇ");
-        openBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
+        openBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         openBtn.setOnAction(e -> openRoad());
 
         Button deleteBtn = new Button("🗑️ SİL");
-        deleteBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold;");
+        deleteBtn.setStyle("-fx-background-color: #9E9E9E; -fx-text-fill: white; -fx-font-weight: bold;");
         deleteBtn.setOnAction(e -> deleteEdge());
 
-        manageEdgeBox.getChildren().addAll(
-                new Label("Yol Seç:"), manageEdgeCombo,
-                closedBtn, constructionBtn, openBtn, deleteBtn
+        Button undoBtn = new Button("↩️ GERİ AL");
+        undoBtn.setStyle("-fx-background-color: #673AB7; -fx-text-fill: white; -fx-font-weight: bold;");
+        undoBtn.setOnAction(e -> undoCommand());
+
+        inputBox.getChildren().addAll(
+                new Label("Yol:"), manageEdgeCombo,
+                closeBtn, constructionBtn, openBtn, deleteBtn, undoBtn
         );
 
-        panel.getChildren().addAll(
-                nodeLabel, adminNodeTable, addNodeBox,
-                separator1,
-                edgeLabel, adminEdgeTable, addEdgeBox,
-                separator2,
-                manageLabel, manageEdgeBox
-        );
-
-        return panel;
+        box.getChildren().addAll(title, inputBox);
+        return box;
     }
 
-    private VBox createUserPanel() {
-        VBox panel = new VBox(15);
-        panel.setPadding(new Insets(15));
-        panel.setStyle("-fx-background-color: #ecf0f1;");
+    private VBox createAdminNodeTable() {
+        VBox box = new VBox(5);
+        Label title = new Label("📋 Şehirler");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
-        Label nodeLabel = new Label("📍 MEVCUT ŞEHİRLER");
-        nodeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        adminNodeTable = new TableView<>();
+        TableColumn<NodeDisplay, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        idCol.setPrefWidth(50);
 
-        userNodeTable = createNodeTable();
-        userNodeTable.setPrefHeight(120);
+        TableColumn<NodeDisplay, String> nameCol = new TableColumn<>("Şehir Adı");
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameCol.setPrefWidth(200);
 
-        Label edgeLabel = new Label("🛣️ MEVCUT YOLLAR");
-        edgeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        TableColumn<NodeDisplay, String> typeCol = new TableColumn<>("Tip");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        typeCol.setPrefWidth(100);
 
-        userEdgeTable = createEdgeTable();
-        userEdgeTable.setPrefHeight(120);
+        adminNodeTable.getColumns().addAll(idCol, nameCol, typeCol);
+        adminNodeTable.setPrefHeight(200);
 
-        Label routeLabel = new Label("🚗 ROTA HESAPLA");
-        routeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        box.getChildren().addAll(title, adminNodeTable);
+        return box;
+    }
 
-        HBox routeBox = new HBox(10);
-        routeBox.setAlignment(Pos.CENTER_LEFT);
+    private VBox createAdminEdgeTable() {
+        VBox box = new VBox(5);
+        Label title = new Label("📋 Yollar");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+
+        adminEdgeTable = new TableView<>();
+        TableColumn<EdgeDisplay, String> routeCol = new TableColumn<>("Rota");
+        routeCol.setCellValueFactory(new PropertyValueFactory<>("route"));
+        routeCol.setPrefWidth(200);
+
+        TableColumn<EdgeDisplay, String> distCol = new TableColumn<>("Mesafe");
+        distCol.setCellValueFactory(new PropertyValueFactory<>("distance"));
+        distCol.setPrefWidth(80);
+
+        TableColumn<EdgeDisplay, String> speedCol = new TableColumn<>("Hız");
+        speedCol.setCellValueFactory(new PropertyValueFactory<>("speed"));
+        speedCol.setPrefWidth(80);
+
+        TableColumn<EdgeDisplay, String> statusCol = new TableColumn<>("Durum");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setPrefWidth(120);
+
+        adminEdgeTable.getColumns().addAll(routeCol, distCol, speedCol, statusCol);
+        adminEdgeTable.setPrefHeight(200);
+
+        box.getChildren().addAll(title, adminEdgeTable);
+        return box;
+    }
+
+    // =========================================================================
+    // USER TAB
+    // =========================================================================
+
+    private Tab createUserTab() {
+        Tab tab = new Tab("👤 Kullanıcı Paneli");
+        tab.setClosable(false);
+
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(15));
+
+        // Route Calculation
+        content.getChildren().add(createRouteCalculationSection());
+
+        // Result Area
+        resultArea = new TextArea();
+        resultArea.setEditable(false);
+        resultArea.setPrefHeight(150);
+        resultArea.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 12;");
+        content.getChildren().add(resultArea);
+
+        // Tables
+        HBox tables = new HBox(10);
+        tables.getChildren().addAll(
+                createUserNodeTable(),
+                createUserEdgeTable()
+        );
+        content.getChildren().add(tables);
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        tab.setContent(scroll);
+
+        return tab;
+    }
+
+    private VBox createRouteCalculationSection() {
+        VBox box = new VBox(10);
+        box.setStyle("-fx-border-color: #4CAF50; -fx-border-width: 2; -fx-padding: 10; -fx-background-color: #E8F5E9;");
+
+        Label title = new Label("🗺️ ROTA HESAPLAMA");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+
+        HBox cityBox = new HBox(10);
         startCityCombo = new ComboBox<>();
-        startCityCombo.setPromptText("Başlangıç");
-        startCityCombo.setPrefWidth(150);
+        startCityCombo.setPromptText("Başlangıç şehri");
+        startCityCombo.setPrefWidth(200);
+
         endCityCombo = new ComboBox<>();
-        endCityCombo.setPromptText("Bitiş");
-        endCityCombo.setPrefWidth(150);
+        endCityCombo.setPromptText("Bitiş şehri");
+        endCityCombo.setPrefWidth(200);
+
+        cityBox.getChildren().addAll(
+                new Label("Başlangıç:"), startCityCombo,
+                new Label("Bitiş:"), endCityCombo
+        );
+
+        HBox vehicleBox = new HBox(15);
+        vehicleBox.setAlignment(Pos.CENTER_LEFT);
+        Label vehicleLabel = new Label("Araç Tipi:");
 
         ToggleGroup vehicleGroup = new ToggleGroup();
         carRadio = new RadioButton("🚗 Araba");
         carRadio.setToggleGroup(vehicleGroup);
         carRadio.setSelected(true);
+
         busRadio = new RadioButton("🚌 Otobüs");
         busRadio.setToggleGroup(vehicleGroup);
+
         walkRadio = new RadioButton("🚶 Yürüyüş");
         walkRadio.setToggleGroup(vehicleGroup);
 
-        Button calculateBtn = new Button("📍 ROTA HESAPLA");
-        calculateBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 14px;");
+        vehicleBox.getChildren().addAll(vehicleLabel, carRadio, busRadio, walkRadio);
+
+        Button calculateBtn = new Button("🔍 ROTA HESAPLA");
+        calculateBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;");
+        calculateBtn.setPrefWidth(200);
         calculateBtn.setOnAction(e -> calculateRoute());
 
-        routeBox.getChildren().addAll(
-                new Label("Başlangıç:"), startCityCombo,
-                new Label("Bitiş:"), endCityCombo,
-                carRadio, busRadio, walkRadio,
-                calculateBtn
-        );
-
-        Label resultLabel = new Label("📊 ROTA SONUCU");
-        resultLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-
-        resultArea = new TextArea();
-        resultArea.setEditable(false);
-        resultArea.setPrefHeight(150);
-        resultArea.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 12px;");
-
-        panel.getChildren().addAll(
-                nodeLabel, userNodeTable,
-                edgeLabel, userEdgeTable,
-                new Separator(),
-                routeLabel, routeBox,
-                resultLabel, resultArea
-        );
-
-        return panel;
+        box.getChildren().addAll(title, cityBox, vehicleBox, calculateBtn);
+        return box;
     }
 
-    private ScrollPane createNotificationPanel() {
-        ScrollPane scroll = new ScrollPane();
-        scroll.setPrefHeight(100);
-        scroll.setFitToWidth(true);
+    private VBox createUserNodeTable() {
+        VBox box = new VBox(5);
+        Label title = new Label("📋 Mevcut Şehirler");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
-        notificationBox = new VBox(5);
-        notificationBox.setPadding(new Insets(10));
-        notificationBox.setStyle("-fx-background-color: #34495e;");
-
-        Label title = new Label("📢 BİLDİRİMLER");
-        title.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-
-        notificationBox.getChildren().add(title);
-        scroll.setContent(notificationBox);
-
-        return scroll;
-    }
-
-    private TableView<NodeDisplay> createNodeTable() {
-        TableView<NodeDisplay> table = new TableView<>();
-        TableColumn<NodeDisplay, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
-        idCol.setPrefWidth(50);
-        TableColumn<NodeDisplay, String> nameCol = new TableColumn<>("Şehir Adı");
+        userNodeTable = new TableView<>();
+        TableColumn<NodeDisplay, String> nameCol = new TableColumn<>("Şehir");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameCol.setPrefWidth(200);
-        table.getColumns().addAll(idCol, nameCol);
-        return table;
+
+        TableColumn<NodeDisplay, String> typeCol = new TableColumn<>("Tip");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        typeCol.setPrefWidth(100);
+
+        userNodeTable.getColumns().addAll(nameCol, typeCol);
+        userNodeTable.setPrefHeight(200);
+
+        box.getChildren().addAll(title, userNodeTable);
+        return box;
     }
 
-    private TableView<EdgeDisplay> createEdgeTable() {
-        TableView<EdgeDisplay> table = new TableView<>();
+    private VBox createUserEdgeTable() {
+        VBox box = new VBox(5);
+        Label title = new Label("📋 Mevcut Yollar");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+
+        userEdgeTable = new TableView<>();
         TableColumn<EdgeDisplay, String> routeCol = new TableColumn<>("Rota");
         routeCol.setCellValueFactory(new PropertyValueFactory<>("route"));
         routeCol.setPrefWidth(200);
-        TableColumn<EdgeDisplay, Double> distCol = new TableColumn<>("Mesafe (km)");
+
+        TableColumn<EdgeDisplay, String> distCol = new TableColumn<>("Mesafe (km)");
         distCol.setCellValueFactory(new PropertyValueFactory<>("distance"));
         distCol.setPrefWidth(100);
-        TableColumn<EdgeDisplay, Integer> speedCol = new TableColumn<>("Hız (km/h)");
-        speedCol.setCellValueFactory(new PropertyValueFactory<>("speed"));
-        speedCol.setPrefWidth(100);
+
         TableColumn<EdgeDisplay, String> statusCol = new TableColumn<>("Durum");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
-        statusCol.setPrefWidth(100);
-        table.getColumns().addAll(routeCol, distCol, speedCol, statusCol);
-        return table;
+        statusCol.setPrefWidth(120);
+
+        userEdgeTable.getColumns().addAll(routeCol, distCol, statusCol);
+        userEdgeTable.setPrefHeight(200);
+
+        box.getChildren().addAll(title, userEdgeTable);
+        return box;
     }
+
+    // =========================================================================
+    // ADMIN OPERATIONS
+    // =========================================================================
 
     private void addNode() {
         String name = nodeNameField.getText().trim();
+        NodeType type = nodeTypeCombo.getValue();
+
         if (name.isEmpty()) {
-            addNotification("❌ Şehir adı boş olamaz!", "#e74c3c");
+            addNotification("⚠️ Şehir adı boş olamaz!", "#F44336");
             return;
         }
-        Node newNode = new Node(name, NodeType.CITY);
-        cityMap.addNode(newNode);
+
+        Node node = new Node(name, type);
+        map.addNode(node);
+
         nodeNameField.clear();
         refreshAllTables();
-        addNotification("✅ Şehir eklendi: " + name, "#27ae60");
+        updateComboBoxes();
+        addNotification("✅ Şehir eklendi: " + name, "#4CAF50");
     }
 
     private void addEdge() {
-        String source = edgeSourceCombo.getValue();
-        String dest = edgeDestCombo.getValue();
+        String fromName = edgeFromCombo.getValue();
+        String toName = edgeToCombo.getValue();
         String distStr = edgeDistanceField.getText().trim();
         String speedStr = edgeSpeedField.getText().trim();
 
-        if (source == null || dest == null || distStr.isEmpty() || speedStr.isEmpty()) {
-            addNotification("❌ Tüm alanları doldurun!", "#e74c3c");
-            return;
-        }
-        if (source.equals(dest)) {
-            addNotification("❌ Kaynak ve hedef aynı olamaz!", "#e74c3c");
+        if (fromName == null || toName == null || distStr.isEmpty() || speedStr.isEmpty()) {
+            addNotification("⚠️ Tüm alanları doldurun!", "#F44336");
             return;
         }
 
         try {
             double distance = Double.parseDouble(distStr);
-            int speed = Integer.parseInt(speedStr);
-            Node srcNode = findNode(source);
-            Node destNode = findNode(dest);
-            if (srcNode == null || destNode == null) {
-                addNotification("❌ Şehirler bulunamadı!", "#e74c3c");
+            int speedLimit = Integer.parseInt(speedStr);
+
+            Node from = findNode(fromName);
+            Node to = findNode(toName);
+
+            if (from == null || to == null) {
+                addNotification("⚠️ Şehirler bulunamadı!", "#F44336");
                 return;
             }
-            Edge edge1 = new Edge(srcNode, destNode, distance, speed);
-            Edge edge2 = new Edge(destNode, srcNode, distance, speed);
-            cityMap.addEdge(edge1);
-            cityMap.addEdge(edge2);
+
+            Edge edge1 = new Edge(from, to, distance, speedLimit);
+            Edge edge2 = new Edge(to, from, distance, speedLimit);
+            map.addEdge(edge1);
+            map.addEdge(edge2);
+
             edgeDistanceField.clear();
             edgeSpeedField.clear();
             refreshAllTables();
-            addNotification("✅ Yol eklendi: " + source + " ↔ " + dest, "#27ae60");
+            updateComboBoxes();
+            addNotification("✅ Çift yönlü yol eklendi: " + fromName + " ↔ " + toName, "#4CAF50");
+
         } catch (NumberFormatException e) {
-            addNotification("❌ Mesafe ve hız sayı olmalı!", "#e74c3c");
+            addNotification("⚠️ Geçersiz sayı formatı!", "#F44336");
         }
     }
 
     private void closeRoad() {
         String selected = manageEdgeCombo.getValue();
-        if (selected == null) {
-            addNotification("❌ Yol seçin!", "#e74c3c");
+        if (selected == null || selected.isEmpty()) {
+            addNotification("⚠️ Yol seçin!", "#F44336");
             return;
         }
+
         String[] parts = selected.split(" → ");
-        Edge edge = findEdge(parts[0], parts[1]);
-        if (edge != null) {
-            edge.setStatus(EdgeStatus.CLOSED);
-            refreshAllTables();
-            addNotification("🚫 Yol kapatıldı: " + selected, "#c0392b");
-        }
+        String from = parts[0];
+        String to = parts[1].split(" \\(")[0];
+
+        // ★ COMMAND + OBSERVER PATTERN ★
+        facade.setAdminMode(true);
+        facade.blockRoad(from, to);
+
+        // Observer otomatik bildirim gönderir!
+        // refreshAllTables() Observer içinde yapılıyor
     }
 
     private void setConstruction() {
         String selected = manageEdgeCombo.getValue();
-        if (selected == null) {
-            addNotification("❌ Yol seçin!", "#e74c3c");
+        if (selected == null || selected.isEmpty()) {
+            addNotification("⚠️ Yol seçin!", "#F44336");
             return;
         }
+
         String[] parts = selected.split(" → ");
-        Edge edge = findEdge(parts[0], parts[1]);
-        if (edge != null) {
-            edge.setStatus(EdgeStatus.UNDER_CONSTRUCTION);
-            refreshAllTables();
-            addNotification("🚧 Yol tadilatta: " + selected, "#f39c12");
-        }
+        String from = parts[0];
+        String to = parts[1].split(" \\(")[0];
+
+        // ★ COMMAND + OBSERVER PATTERN ★
+        facade.setAdminMode(true);
+        facade.blockRoad(from, to);  // UNDER_CONSTRUCTION yapar
+
+        // Observer otomatik bildirim gönderir!
     }
 
     private void openRoad() {
         String selected = manageEdgeCombo.getValue();
-        if (selected == null) {
-            addNotification("❌ Yol seçin!", "#e74c3c");
+        if (selected == null || selected.isEmpty()) {
+            addNotification("⚠️ Yol seçin!", "#F44336");
             return;
         }
+
         String[] parts = selected.split(" → ");
-        Edge edge = findEdge(parts[0], parts[1]);
-        if (edge != null) {
-            edge.setStatus(EdgeStatus.OPEN);
-            refreshAllTables();
-            addNotification("✅ Yol açıldı: " + selected, "#27ae60");
+        String from = parts[0];
+        String to = parts[1].split(" \\(")[0];
+
+        Edge edge = findEdge(from, to);
+        if (edge == null) {
+            addNotification("⚠️ Yol bulunamadı!", "#F44336");
+            return;
         }
+
+        edge.setStatus(EdgeStatus.OPEN);
+        refreshAllTables();
+        addNotification("✅ Yol açıldı: " + from + " → " + to, "#4CAF50");
     }
 
     private void deleteEdge() {
         String selected = manageEdgeCombo.getValue();
-        if (selected == null) {
-            addNotification("❌ Yol seçin!", "#e74c3c");
+        if (selected == null || selected.isEmpty()) {
+            addNotification("⚠️ Yol seçin!", "#F44336");
             return;
         }
+
         String[] parts = selected.split(" → ");
-        Edge edge = findEdge(parts[0], parts[1]);
-        if (edge != null) {
-            cityMap.removeEdge(edge);
+        String from = parts[0];
+        String to = parts[1].split(" \\(")[0];
+
+        Edge edge1 = findEdge(from, to);
+        Edge edge2 = findEdge(to, from);
+
+        if (edge1 != null) map.removeEdge(edge1);
+        if (edge2 != null) map.removeEdge(edge2);
+
+        refreshAllTables();
+        updateComboBoxes();
+        addNotification("🗑️ Yol silindi: " + from + " ↔ " + to, "#9E9E9E");
+    }
+
+    private void undoCommand() {
+        boolean success = facade.undoLastCommand();
+        if (success) {
             refreshAllTables();
-            addNotification("🗑️ Yol silindi: " + selected, "#95a5a6");
+            addNotification("↩️ Son işlem geri alındı", "#673AB7");
+        } else {
+            addNotification("⚠️ Geri alınacak işlem yok!", "#F44336");
         }
     }
 
-    private void calculateRoute() {
-        String start = startCityCombo.getValue();
-        String end = endCityCombo.getValue();
+    // =========================================================================
+    // USER OPERATIONS
+    // =========================================================================
 
-        if (start == null || end == null) {
-            addNotification("❌ Başlangıç ve bitiş seçin!", "#e74c3c");
-            return;
-        }
-        if (start.equals(end)) {
-            addNotification("❌ Başlangıç ve bitiş aynı olamaz!", "#e74c3c");
+    private void calculateRoute() {
+        String startName = startCityCombo.getValue();
+        String endName = endCityCombo.getValue();
+
+        if (startName == null || endName == null) {
+            addNotification("⚠️ Başlangıç ve bitiş şehri seçin!", "#F44336");
             return;
         }
 
         VehicleType vehicle = VehicleType.CAR;
         if (busRadio.isSelected()) vehicle = VehicleType.BUS;
-        if (walkRadio.isSelected()) vehicle = VehicleType.WALK;
+        else if (walkRadio.isSelected()) vehicle = VehicleType.WALK;
 
-        Node startNode = findNode(start);
-        Node endNode = findNode(end);
-        if (startNode == null || endNode == null) {
-            addNotification("❌ Şehirler bulunamadı!", "#e74c3c");
-            return;
-        }
+        resultArea.clear();
+        resultArea.appendText("═══════════════════════════════════════\n");
+        resultArea.appendText("  ROTA HESAPLANIYOR...\n");
+        resultArea.appendText("═══════════════════════════════════════\n\n");
 
-        com.navigation.project.backend.strategy.DijkstraStrategy strategy =
-                new com.navigation.project.backend.strategy.DijkstraStrategy();
-        com.navigation.project.backend.strategy.RouteCalculationResult result =
-                strategy.calculateRoute(startNode, endNode, vehicle);
+        // Facade calculateRoute içinde console'a yazdırıyor
+        // Sonucu yakalamak için geçici çözüm:
+        facade.calculateRoute(startName, endName, vehicle);
 
-        if (result.getPath() == null || result.getPath().isEmpty()) {
-            resultArea.setText("❌ ROTA BULUNAMADI!\n\nBu iki şehir arasında açık yol yok.");
-            addNotification("❌ Rota bulunamadı!", "#e74c3c");
-            return;
-        }
+        resultArea.appendText("\n✓ Hesaplama tamamlandı!\n");
+        resultArea.appendText("Detaylar console'da görüntülenir.\n");
 
-        double distance = result.getTotalDistance();
-        double duration = result.getTotalDuration();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("✅ ROTA BULUNDU!\n\n");
-        sb.append("Başlangıç: ").append(start).append("\n");
-        sb.append("Bitiş: ").append(end).append("\n");
-        sb.append("Araç: ").append(getVehicleName(vehicle)).append("\n\n");
-        sb.append("ROTA:\n");
-
-        List<Node> path = result.getPath();
-        for (int i = 0; i < path.size(); i++) {
-            sb.append((i + 1)).append(". ").append(path.get(i).getName());
-            if (i < path.size() - 1) sb.append(" → ");
-        }
-
-        sb.append("\n\n");
-        sb.append("═══════════════════════════════\n");
-        sb.append("📏 Toplam Mesafe: ").append(String.format("%.1f km", distance)).append("\n");
-        sb.append("⏱️  Tahmini Süre: ").append(formatTime(duration)).append("\n");
-        sb.append("═══════════════════════════════\n");
-
-        resultArea.setText(sb.toString());
-        addNotification("✅ Rota hesaplandı: " + String.format("%.1f km, %s", distance, formatTime(duration)), "#27ae60");
+        addNotification("🔍 Rota hesaplandı: " + startName + " → " + endName, "#2196F3");
     }
 
-    private String formatTime(double minutes) {
-        int hours = (int) (minutes / 60);
-        int mins = (int) (minutes % 60);
-        if (hours > 0) {
-            return String.format("%d saat %d dk", hours, mins);
-        } else {
-            return String.format("%d dk", mins);
-        }
-    }
-
-    private String getVehicleName(VehicleType vehicle) {
-        switch (vehicle) {
-            case CAR: return "🚗 Araba";
-            case BUS: return "🚌 Otobüs";
-            case WALK: return "🚶 Yürüyüş";
-            default: return "Bilinmiyor";
-        }
-    }
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
 
     private void refreshAllTables() {
-        ObservableList<NodeDisplay> nodeList = FXCollections.observableArrayList();
-        int id = 1;
-        for (Node node : cityMap.getNodes()) {
-            nodeList.add(new NodeDisplay(id++, node.getName()));
-        }
-        adminNodeTable.setItems(nodeList);
-        userNodeTable.setItems(nodeList);
-
-        ObservableList<EdgeDisplay> edgeList = FXCollections.observableArrayList();
-        for (Edge edge : cityMap.getEdges()) {
-            String route = edge.getSource().getName() + " → " + edge.getDestination().getName();
-            String status;
-            switch (edge.getStatus()) {
-                case OPEN: status = "✅ Açık"; break;
-                case CLOSED: status = "🚫 Kapalı"; break;
-                case UNDER_CONSTRUCTION: status = "🚧 Tadilatta"; break;
-                default: status = "❓ Bilinmiyor";
-            }
-            edgeList.add(new EdgeDisplay(route, edge.getDistance(), edge.getSpeedLimit(), status));
-        }
-        adminEdgeTable.setItems(edgeList);
-        userEdgeTable.setItems(edgeList);
+        refreshAdminNodeTable();
+        refreshAdminEdgeTable();
+        refreshUserNodeTable();
+        refreshUserEdgeTable();
         updateComboBoxes();
     }
 
-    private void updateComboBoxes() {
-        ObservableList<String> cities = FXCollections.observableArrayList();
-        for (Node node : cityMap.getNodes()) {
-            cities.add(node.getName());
+    private void refreshAdminNodeTable() {
+        ObservableList<NodeDisplay> data = FXCollections.observableArrayList();
+        int id = 1;
+        for (Node node : map.getNodes()) {
+            data.add(new NodeDisplay(id++, node.getName(), node.getType().toString()));
         }
-        edgeSourceCombo.setItems(cities);
-        edgeDestCombo.setItems(cities);
-        startCityCombo.setItems(cities);
-        endCityCombo.setItems(cities);
+        adminNodeTable.setItems(data);
+    }
 
-        ObservableList<String> edges = FXCollections.observableArrayList();
-        for (Edge edge : cityMap.getEdges()) {
+    private void refreshAdminEdgeTable() {
+        ObservableList<EdgeDisplay> data = FXCollections.observableArrayList();
+        for (Edge edge : map.getEdges()) {
             String route = edge.getSource().getName() + " → " + edge.getDestination().getName();
-            if (!edges.contains(route)) edges.add(route);
+            String distance = edge.getDistance() + " km";
+            String speed = edge.getSpeedLimit() + " km/h";
+            String status = getStatusText(edge.getStatus());
+            data.add(new EdgeDisplay(route, distance, speed, status));
         }
-        manageEdgeCombo.setItems(edges);
+        adminEdgeTable.setItems(data);
+    }
+
+    private void refreshUserNodeTable() {
+        ObservableList<NodeDisplay> data = FXCollections.observableArrayList();
+        int id = 1;
+        for (Node node : map.getNodes()) {
+            data.add(new NodeDisplay(id++, node.getName(), node.getType().toString()));
+        }
+        userNodeTable.setItems(data);
+    }
+
+    private void refreshUserEdgeTable() {
+        ObservableList<EdgeDisplay> data = FXCollections.observableArrayList();
+        for (Edge edge : map.getEdges()) {
+            String route = edge.getSource().getName() + " → " + edge.getDestination().getName();
+            String distance = edge.getDistance() + " km";
+            String speed = edge.getSpeedLimit() + " km/h";
+            String status = getStatusText(edge.getStatus());
+            data.add(new EdgeDisplay(route, distance, speed, status));
+        }
+        userEdgeTable.setItems(data);
+    }
+
+    private void updateComboBoxes() {
+        ObservableList<String> nodeNames = FXCollections.observableArrayList();
+        for (Node node : map.getNodes()) {
+            nodeNames.add(node.getName());
+        }
+
+        edgeFromCombo.setItems(nodeNames);
+        edgeToCombo.setItems(nodeNames);
+        startCityCombo.setItems(nodeNames);
+        endCityCombo.setItems(nodeNames);
+
+        ObservableList<String> edgeNames = FXCollections.observableArrayList();
+        for (Edge edge : map.getEdges()) {
+            String name = edge.getSource().getName() + " → " + edge.getDestination().getName() +
+                    " (" + edge.getDistance() + " km)";
+            edgeNames.add(name);
+        }
+        manageEdgeCombo.setItems(edgeNames);
+    }
+
+    private void addNotification(String message, String color) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+        Label notifLabel = new Label("⏰ " + timestamp + " - " + message);
+        notifLabel.setStyle("-fx-padding: 5; -fx-background-color: " + color + "; -fx-text-fill: white; " +
+                "-fx-background-radius: 3; -fx-font-size: 11;");
+        notifLabel.setMaxWidth(Double.MAX_VALUE);
+
+        notificationBox.getChildren().add(0, notifLabel);
+
+        // Max 10 bildirim
+        if (notificationBox.getChildren().size() > 10) {
+            notificationBox.getChildren().remove(10, notificationBox.getChildren().size());
+        }
+    }
+
+    private String getStatusText(EdgeStatus status) {
+        switch (status) {
+            case OPEN: return "✅ AÇIK";
+            case CLOSED: return "🚫 KAPALI";
+            case UNDER_CONSTRUCTION: return "🚧 TADİLATTA";
+            default: return status.toString();
+        }
     }
 
     private Node findNode(String name) {
-        for (Node node : cityMap.getNodes()) {
-            if (node.getName().equals(name)) return node;
+        for (Node node : map.getNodes()) {
+            if (node.getName().equals(name)) {
+                return node;
+            }
         }
         return null;
     }
 
-    private Edge findEdge(String from, String to) {
-        Node fromNode = findNode(from);
-        Node toNode = findNode(to);
-        if (fromNode == null || toNode == null) return null;
-        for (Edge edge : cityMap.getEdges()) {
-            if (edge.getSource().equals(fromNode) && edge.getDestination().equals(toNode)) {
+    private Edge findEdge(String fromName, String toName) {
+        Node from = findNode(fromName);
+        Node to = findNode(toName);
+        if (from == null || to == null) return null;
+
+        for (Edge edge : map.getEdges()) {
+            if (edge.getSource().equals(from) && edge.getDestination().equals(to)) {
                 return edge;
             }
         }
         return null;
     }
 
-    private void addNotification(String message, String color) {
-        String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        Label notif = new Label("[" + time + "] " + message);
-        notif.setStyle("-fx-text-fill: white; -fx-padding: 5; -fx-background-color: " + color + "; -fx-background-radius: 5;");
-        notificationBox.getChildren().add(notif);
-        if (notificationBox.getChildren().size() > 11) {
-            notificationBox.getChildren().remove(1);
-        }
+    // =========================================================================
+    // ★ OBSERVER PATTERN IMPLEMENTATION ★
+    // =========================================================================
+
+    /**
+     * Observer Pattern - Yol durumu değiştiğinde otomatik çağrılır
+     * Command pattern ile entegre çalışır
+     */
+    @Override
+    public void onRoadStatusChanged(Edge edge, String message) {
+        // JavaFX UI thread'inde çalıştır
+        Platform.runLater(() -> {
+            // Bildirim göster (OTOMATİK!)
+            String routeInfo = edge.getSource().getName() + " → " + edge.getDestination().getName();
+            addNotification("🚧 " + message + " (" + routeInfo + ")", "#FF9800");
+
+            // Tabloları güncelle
+            refreshAllTables();
+        });
     }
 
-    public BorderPane getRoot() {
-        return root;
+    /**
+     * Observer Pattern - Hız limiti değiştiğinde otomatik çağrılır
+     */
+    @Override
+    public void onSpeedLimitChanged(Edge edge, int oldLimit, int newLimit) {
+        // JavaFX UI thread'inde çalıştır
+        Platform.runLater(() -> {
+            // Bildirim göster (OTOMATİK!)
+            String routeInfo = edge.getSource().getName() + " → " + edge.getDestination().getName();
+            addNotification("⚡ Hız limiti değişti: " + oldLimit + " → " + newLimit + " km/h (" + routeInfo + ")", "#2196F3");
+
+            // Tabloları güncelle
+            refreshAllTables();
+        });
     }
+
+    // =========================================================================
+    // INNER CLASSES - TABLE DATA MODELS
+    // =========================================================================
 
     public static class NodeDisplay {
-        private final int id;
-        private final String name;
-        public NodeDisplay(int id, String name) {
+        private int id;
+        private String name;
+        private String type;
+
+        public NodeDisplay(int id, String name, String type) {
             this.id = id;
             this.name = name;
+            this.type = type;
         }
+
         public int getId() { return id; }
         public String getName() { return name; }
+        public String getType() { return type; }
     }
 
     public static class EdgeDisplay {
-        private final String route;
-        private final double distance;
-        private final int speed;
-        private final String status;
-        public EdgeDisplay(String route, double distance, int speed, String status) {
+        private String route;
+        private String distance;
+        private String speed;
+        private String status;
+
+        public EdgeDisplay(String route, String distance, String speed, String status) {
             this.route = route;
             this.distance = distance;
             this.speed = speed;
             this.status = status;
         }
+
         public String getRoute() { return route; }
-        public double getDistance() { return distance; }
-        public int getSpeed() { return speed; }
+        public String getDistance() { return distance; }
+        public String getSpeed() { return speed; }
         public String getStatus() { return status; }
     }
 }

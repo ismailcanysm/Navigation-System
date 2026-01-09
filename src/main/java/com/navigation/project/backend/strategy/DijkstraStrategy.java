@@ -38,12 +38,13 @@ import java.util.*;
  *
  * SÜRE HESAPLAMA:
  * - CAR: Yol hız limiti kullanılır
- * - BUS: Max 80 km/h, her segment +5 dk durak
+ * - BUS: Max 80 km/h, her segment +30 dk durak
  * - WALK: Sabit 5 km/h
  * - Formül: time = (distance / effectiveSpeed) * 60 (dakika)
  *
  * TEMEL METODLAR:
- * - calculateRoute(start, end, vehicle): Ana metod, RouteCalculationResult döner
+ * - calculateRoute(start, end): Varsayılan (CAR)
+ * - calculateRoute(start, end, vehicle): Araç tipine göre
  * - buildResult(): Sonuç nesnesini oluşturur
  * - calculateDuration(): Toplam süreyi hesaplar
  * - findEdge(): İki node arası edge bulur
@@ -53,18 +54,14 @@ import java.util.*;
  * - V: Node sayısı
  * - E: Edge sayısı
  */
-
-/**
- * DijkstraStrategy - Dijkstra Algoritması
- *
- * En kısa mesafe + Süre hesaplama (Zaman = Mesafe / Hız)
- * Araç tipine göre süre hesaplar
- */
 public class DijkstraStrategy implements IRouteStrategy {
 
-    @Override
+    /**
+     * Rota hesapla (Varsayılan: Araba)
+     * Geriye uyumluluk için
+     */
+
     public RouteCalculationResult calculateRoute(Node startNode, Node endNode) {
-        // Default: Araba (geriye uyumluluk)
         return calculateRoute(startNode, endNode, VehicleType.CAR);
     }
 
@@ -72,16 +69,19 @@ public class DijkstraStrategy implements IRouteStrategy {
      * Rota hesapla - ARAÇ TİPİNE GÖRE SÜRE HESAPLA
      * Zaman = Mesafe / Hız formülü
      */
+    @Override
     public RouteCalculationResult calculateRoute(Node startNode, Node endNode, VehicleType vehicle) {
         if (startNode == null || endNode == null) {
-            System.err.println("HATA: Başlangıç ve Bitiş noktası boş olamaz!");
+            System.err.println("[Dijkstra] HATA: Başlangıç ve Bitiş noktası boş olamaz!");
             return new RouteCalculationResult(Collections.emptyList(), 0, 0);
         }
 
-        System.out.println("[Dijkstra] Rota hesaplanıyor: " + startNode.getName() + " → " + endNode.getName());
+        System.out.println("\n[Dijkstra] Rota hesaplanıyor...");
+        System.out.println("[Dijkstra] Başlangıç: " + startNode.getName());
+        System.out.println("[Dijkstra] Hedef: " + endNode.getName());
         System.out.println("[Dijkstra] Araç tipi: " + vehicle);
 
-        // 1. Singleton Haritayı çağır
+        // 1. Singleton Haritayı al
         CityMap map = CityMap.getInstance();
 
         // Algoritma Değişkenleri
@@ -89,7 +89,7 @@ public class DijkstraStrategy implements IRouteStrategy {
         Map<Node, Node> previousNodes = new HashMap<>();
         Set<Node> visited = new HashSet<>();
 
-        // Öncelik Kuyruğu
+        // Öncelik Kuyruğu (Priority Queue)
         PriorityQueue<Node> queue = new PriorityQueue<>(
                 Comparator.comparingDouble(distances::get)
         );
@@ -105,17 +105,23 @@ public class DijkstraStrategy implements IRouteStrategy {
         while (!queue.isEmpty()) {
             Node current = queue.poll();
 
-            if (visited.contains(current)) continue;
+            // Zaten ziyaret edilmiş mi?
+            if (visited.contains(current)) {
+                continue;
+            }
             visited.add(current);
 
+            // Hedefe ulaştık mı?
             if (current.equals(endNode)) {
+                System.out.println("[Dijkstra] Hedef node'a ulaşıldı!");
                 break;
             }
 
+            // Komşuları kontrol et
             for (Edge edge : getOutgoingEdges(map, current)) {
-                // Kapalı ve çalışma olan yolları kullanma
+                // Sadece AÇIK yolları kullan
                 if (edge.getStatus() != EdgeStatus.OPEN) {
-                    System.out.println("[Dijkstra]   Yol atlandı (Kapalı/Çalışma): " +
+                    System.out.println("[Dijkstra]   Yol atlandı (" + edge.getStatus() + "): " +
                             edge.getSource().getName() + " → " + edge.getDestination().getName());
                     continue;
                 }
@@ -123,11 +129,12 @@ public class DijkstraStrategy implements IRouteStrategy {
                 Node neighbour = edge.getDestination();
                 double newDist = distances.get(current) + edge.getDistance();
 
+                // Daha kısa yol bulundu mu?
                 if (newDist < distances.get(neighbour)) {
                     distances.put(neighbour, newDist);
                     previousNodes.put(neighbour, current);
-                    queue.remove(neighbour);
-                    queue.add(neighbour);
+                    queue.remove(neighbour);  // Eski önceliği kaldır
+                    queue.add(neighbour);      // Yeni öncelikle ekle
                 }
             }
         }
@@ -145,16 +152,16 @@ public class DijkstraStrategy implements IRouteStrategy {
             Node endNode,
             VehicleType vehicle) {
 
-        List<Node> path = new ArrayList<>();
-        Node step = endNode;
-
-        // Yol bulunamadı
-        if (distances.get(endNode) == Double.MAX_VALUE) {
-            System.out.println("[Dijkstra] UYARI: Hedefe giden uygun bir yol bulunamadı.");
+        // Yol bulunamadı kontrolü
+        if (distances.get(endNode) == Double.MAX_VALUE || previousNodes.get(endNode) == null) {
+            System.out.println("[Dijkstra] UYARI: Hedefe giden uygun bir yol bulunamadı!");
             return new RouteCalculationResult(Collections.emptyList(), 0, 0);
         }
 
-        // Rotayı oluştur (tersten)
+        // Rotayı oluştur (tersten geri sar)
+        List<Node> path = new ArrayList<>();
+        Node step = endNode;
+
         while (step != null) {
             path.add(step);
             step = previousNodes.get(step);
@@ -167,7 +174,7 @@ public class DijkstraStrategy implements IRouteStrategy {
         // Süreyi hesapla (Zaman = Mesafe / Hız)
         double totalDuration = calculateDuration(path, vehicle);
 
-        System.out.println(String.format("[Dijkstra] Rota bulundu: %.1f km, %.1f dk (%s)",
+        System.out.println(String.format("[Dijkstra] ✓ Rota bulundu: %.1f km, %.1f dk (%s)\n",
                 totalDistance, totalDuration, vehicle));
 
         return new RouteCalculationResult(path, totalDistance, totalDuration);
@@ -178,7 +185,9 @@ public class DijkstraStrategy implements IRouteStrategy {
      * Zaman = Mesafe / Hız (dakika)
      */
     private double calculateDuration(List<Node> path, VehicleType vehicle) {
-        if (path.size() < 2) return 0;
+        if (path.size() < 2) {
+            return 0;
+        }
 
         CityMap map = CityMap.getInstance();
         double totalTime = 0; // dakika
@@ -197,20 +206,23 @@ public class DijkstraStrategy implements IRouteStrategy {
 
                 switch (vehicle) {
                     case CAR:
-                        // Araba edge'deki hız limitini kullanır
+                        // Araba: Edge'deki hız limitini kullanır
                         effectiveSpeed = edgeSpeedLimit;
                         break;
 
                     case BUS:
-                        if (edgeSpeedLimit <= 80)
+                        // Otobüs: Daha yavaş gider (max 80, genelde -10)
+                        if (edgeSpeedLimit <= 80) {
                             effectiveSpeed = edgeSpeedLimit - 10;
-                        else
+                        } else {
                             effectiveSpeed = 80;
-                        totalTime += 30; // Her segment için 30 dk durak süresi
+                        }
+                        // Her segment için 30 dk durak bekleme
+                        totalTime += 30;
                         break;
 
                     case WALK:
-                        // Yürüyüş sabit 5 km/h
+                        // Yürüyüş: Sabit 5 km/h
                         effectiveSpeed = 5;
                         break;
 
@@ -244,7 +256,7 @@ public class DijkstraStrategy implements IRouteStrategy {
     }
 
     /**
-     * Node'dan çıkan edge'leri bul
+     * Node'dan çıkan tüm edge'leri bul
      */
     private List<Edge> getOutgoingEdges(CityMap map, Node source) {
         List<Edge> result = new ArrayList<>();

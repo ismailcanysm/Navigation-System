@@ -2,36 +2,7 @@ package com.navigation.project.backend.template;
 
 import com.navigation.project.backend.strategy.IRouteStrategy;
 import com.navigation.project.backend.strategy.RouteCalculationResult;
-
-/**
- * CarTrip - Araba Yolculuğu İmplementasyonu
- *
- * AMAÇ:
- * Araba ile yolculuk simülasyonu yapar.
- * TripAlgorithm'in printReceipt metodunu implement eder.
- *
- * NE İŞE YARAR:
- * - Araba yolculuğuna özel çıktı üretir
- * - Yakıt maliyeti hesaplar (2.5 TL/km)
- * - Console'a araba yolculuğu detaylarını yazar
- *
- * PATTERN: Template Method Pattern
- * PARENT: TripAlgorithm
- *
- * HESAPLAMALAR:
- * - Hız: Yol hız limiti kullanılır
- * - Maliyet: distance * 2.5 TL
- *
- * ÇIKTI ÖRNEĞİ:
- * =====================================
- * ARABA YOLCULUĞU
- * =====================================
- * Rota: İstanbul → Bursa → İzmir
- * Toplam Mesafe: 350.0 km
- * Tahmini Süre: 3 saat 21 dk
- * Yakıt Maliyeti: 875.0 TL
- * =====================================
- */
+import com.navigation.project.backend.model.VehicleType;
 
 public class CarTrip extends TripAlgorithm {
 
@@ -39,15 +10,41 @@ public class CarTrip extends TripAlgorithm {
         super(strategy);
     }
 
+    // ARAÇ TİPİNİ DÖNER
+    @Override
+    protected VehicleType getVehicleType() {
+        return VehicleType.CAR;
+    }
+
     @Override
     protected void printReceipt(RouteCalculationResult result) {
-        System.out.println("\n=== [ARABA YOLCULUĞU] ===");
-        System.out.println("Rota: " + result.getPath());
-        System.out.println("Mesafe: " + result.getTotalDistance() + " km");
+        System.out.println("\n=====================================");
+        System.out.println("        ARABA YOLCULUĞU");
+        System.out.println("=====================================");
 
-        // Benzin Hesabı: km başına 2.5 TL yaktığını varsayalım
-        double yakitMaliyeti = result.getTotalDistance() * 2.5;
-        System.out.println("Tahmini Yakıt: " + yakitMaliyeti + " TL");
-        System.out.println("=========================\n");
+        // Rota
+        System.out.print("Rota: ");
+        for (int i = 0; i < result.getPath().size(); i++) {
+            System.out.print(result.getPath().get(i).getName());
+            if (i < result.getPath().size() - 1) {
+                System.out.print(" => ");
+            }
+        }
+        System.out.println();
+
+        // Mesafe
+        System.out.printf("Toplam Mesafe: %.1f km%n", result.getTotalDistance());
+
+        // Süre
+        double sure = result.getTotalDuration();
+        int saat = (int) (sure / 60);
+        int dakika = (int) (sure % 60);
+        System.out.printf("Tahmini Süre: %d saat %d dk%n", saat, dakika);
+
+        // Yakıt
+        double yakitMaliyet = result.getTotalDistance() * 2.5;
+        System.out.printf("Yakıt Maliyeti: %.2f TL (2.5 TL/km)%n", yakitMaliyet);
+
+        System.out.println("=====================================\n");
     }
 }

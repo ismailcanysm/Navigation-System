@@ -88,8 +88,14 @@ public class NavigationFacade {
     }
 
     // son komutu geri al
-    public void undoLastCommand() {
-        invoker.undo();
+    public boolean undoLastCommand() {
+        boolean success = invoker.undo();
+        if (success) {
+            System.out.println("[Facade] Son komut geri alındı");
+        } else {
+            System.out.println("[Facade] Geri alınacak komut yok");
+        }
+        return success;
     }
 
     public void addObserver(ITrafficObserver observer) {

@@ -3,6 +3,7 @@ package com.navigation.project.backend.template;
 import com.navigation.project.backend.model.Node;
 import com.navigation.project.backend.strategy.IRouteStrategy;
 import com.navigation.project.backend.strategy.RouteCalculationResult;
+import com.navigation.project.backend.model.VehicleType;
 
 /**
  * TripAlgorithm - Template Method Pattern (Abstract Base Class)
@@ -41,51 +42,47 @@ import com.navigation.project.backend.strategy.RouteCalculationResult;
  * - İskelet korunur, detaylar değişir
  */
 
-// [PATTERN: Template Method]
-// Algoritmanın iskeletini kurar. Alt sınıflar sadece "Fiş Yazdırma" (printReceipt) kısmını değiştirir.
 public abstract class TripAlgorithm {
+
     protected IRouteStrategy strategy;
 
-    public TripAlgorithm(IRouteStrategy strategy){
+    public TripAlgorithm(IRouteStrategy strategy) {
         this.strategy = strategy;
     }
 
-    // --- ŞABLON METOT (Template Method) ---
-    // final: Alt sınıflar bu akışı değiştiremez!
-    public final void executeTrip(Node startNode, Node endNode){
+    // ABSTRACT METOD - Alt sınıflar kendi araç tipini döner
+    protected abstract VehicleType getVehicleType();
 
-        // Adım 1: Validasyon (Doğrulama)
-        if (!validate(startNode, endNode)){
-            System.err.println("HATA: Yolculuk için başlangıç veya bitiş noktası geçersiz.");
+    // Template Method
+    public final void executeTrip(Node start, Node end) {
+        // 1. Validate
+        if (!validate(start, end)) {
             return;
         }
-        System.out.println("--- " + this.getClass().getSimpleName() + " Başlatılıyor ---");
 
-        // Adım 2: Hesaplama (Strategy Pattern burada devreye girer)
-        RouteCalculationResult result = strategy.calculateRoute(startNode, endNode);
+        // 2. Rota hesapla
+        RouteCalculationResult result = strategy.calculateRoute(start, end, getVehicleType());
 
-        // Adım 3: Sonuç Gösterme (Her araç tipi bunu kendine göre yapar)
-        if (result != null){
-            printReceipt(result);
+        // 3. Fatura yazdır
+        if (result.getPath().isEmpty()) {
+            System.out.println("Rota bulunamadı!");
+            return;
         }
+
+        printReceipt(result);
     }
 
-    // Ortak doğrulama mantığı
-    protected boolean validate(Node start, Node end){
-        return start != null && end != null && !start.equals(end);
+    protected boolean validate(Node start, Node end) {
+        if (start == null || end == null) {
+            System.out.println("Başlangıç ve bitiş noktası boş olamaz!");
+            return false;
+        }
+        if (start.equals(end)) {
+            System.out.println("Başlangıç ve bitiş aynı olamaz!");
+            return false;
+        }
+        return true;
     }
 
-    // Alt sınıfların doldurması gereken soyut metot
     protected abstract void printReceipt(RouteCalculationResult result);
-
-
 }
-
-
-
-
-
-
-
-
-
