@@ -7,6 +7,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Şehirleri ve yolları depolar
+ * Singleton kullanarak sadece 1 harita oluşturumamıza olanak tanır bu sayede karmaşıklık önlenir
+ * Admin ayrı bir map te kullanıcı ayrı map te gibi bir durumu engeller
+ */
+
 // [PATTERN: Singleton]
 // Bu sınıf harita verisini tutan TEKİL depodur.
 public class CityMap {

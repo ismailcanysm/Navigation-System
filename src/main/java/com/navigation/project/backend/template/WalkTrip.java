@@ -3,6 +3,38 @@ package com.navigation.project.backend.template;
 import com.navigation.project.backend.strategy.IRouteStrategy;
 import com.navigation.project.backend.strategy.RouteCalculationResult;
 
+/**
+ * WalkTrip - Yürüyüş Rotası İmplementasyonu
+ *
+ * AMAÇ:
+ * Yürüyerek yolculuk simülasyonu yapar.
+ * TripAlgorithm'in printReceipt metodunu implement eder.
+ *
+ * NE İŞE YARAR:
+ * - Yürüyüş rotasına özel çıktı üretir
+ * - Kalori hesabı yapar (50 kcal/km)
+ * - Maliyet gösterir (0 TL - bedava)
+ *
+ * PATTERN: Template Method Pattern
+ * PARENT: TripAlgorithm
+ *
+ * HESAPLAMALAR:
+ * - Hız: Sabit 5 km/h
+ * - Kalori: distance * 50 kcal
+ * - Maliyet: 0 TL (bedava)
+ *
+ * ÇIKTI ÖRNEĞİ:
+ * =====================================
+ * YÜRÜYÜŞ ROTASI
+ * =====================================
+ * Rota: İstanbul → Bursa → İzmir
+ * Toplam Mesafe: 350.0 km
+ * Tahmini Süre: 70 saat 0 dk
+ * Yakılan Kalori: 17500 kcal
+ * Maliyet: 0 TL (Bedava!)
+ * =====================================
+ */
+
 public class WalkTrip extends TripAlgorithm {
 
     public WalkTrip(IRouteStrategy strategy) {

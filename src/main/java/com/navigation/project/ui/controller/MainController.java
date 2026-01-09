@@ -16,6 +16,64 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
+ * MainController - Ana UI Kontrolcüsü
+ *
+ * AMAÇ:
+ * Tüm UI bileşenlerini oluşturur ve yönetir.
+ * Backend ile UI arasında köprü görevi görür.
+ *
+ * NE İŞE YARAR:
+ * - Admin ve User panellerini oluşturur
+ * - Şehir ve yol tablolarını yönetir
+ * - Rota hesaplama işlemlerini yapar
+ * - Admin yönetim işlemlerini koordine eder
+ * - Bildirimleri gösterir
+ * - NavigationFacade ile backend'e erişir
+ *
+ * İLİŞKİLİ SINIFLAR: NavigationFacade, CityMap, Node, Edge
+ *
+ * UI BİLEŞENLERİ:
+ * - BorderPane: Ana layout
+ * - TabPane: Admin/User sekmeler
+ * - TableView: Şehir ve yol tabloları
+ * - ComboBox: Şehir seçimi
+ * - RadioButton: Araç seçimi
+ * - TextArea: Sonuç gösterimi
+ * - VBox: Bildirim paneli
+ *
+ * ADMIN PANELİ İŞLEMLERİ:
+ * - addNode(): Yeni şehir ekler
+ * - addEdge(): Yeni yol ekler (çift yönlü)
+ * - closeRoad(): Yolu kapatır
+ * - setConstruction(): Yolu tadidata alır
+ * - openRoad(): Yolu açar
+ * - deleteEdge(): Yolu siler
+ *
+ * USER PANELİ İŞLEMLERİ:
+ * - calculateRoute(): Rota hesaplar ve gösterir
+ * - Şehirleri görüntüler (read-only)
+ * - Yolları görüntüler (read-only)
+ *
+ * YARDIMCI METODLAR:
+ * - refreshAllTables(): Tüm tabloları günceller
+ * - updateComboBoxes(): Dropdown listelerini günceller
+ * - addNotification(): Bildirim ekler
+ * - findNode(): İsme göre node bulur
+ * - findEdge(): Node'lara göre edge bulur
+ *
+ * İÇ SINIFLAR:
+ * - NodeDisplay: Tablo için node veri modeli
+ * - EdgeDisplay: Tablo için edge veri modeli
+ *
+ * KULLANIM AKIŞI:
+ * 1. Constructor: Backend başlat, UI oluştur
+ * 2. Admin: Şehir/yol ekle
+ * 3. User: Rota hesapla
+ * 4. Tablolar otomatik güncellenir
+ * 5. Bildirimler alt panelde gösterilir
+ */
+
+/**
  * MainController - SENARYO UYUMLU
  * @author Kişi 2
  */

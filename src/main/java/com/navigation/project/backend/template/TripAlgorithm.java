@@ -4,6 +4,43 @@ import com.navigation.project.backend.model.Node;
 import com.navigation.project.backend.strategy.IRouteStrategy;
 import com.navigation.project.backend.strategy.RouteCalculationResult;
 
+/**
+ * TripAlgorithm - Template Method Pattern (Abstract Base Class)
+ *
+ * AMAÇ:
+ * Yolculuk simülasyonunun iskeletini tanımlar.
+ * Ortak adımları implement eder, değişen detayları alt sınıflara bırakır.
+ *
+ * NE İŞE YARAR:
+ * - Yolculuk akışını standartlaştırır
+ * - Ortak kodları tekrarlamayı önler
+ * - Alt sınıflar sadece farklı kısımları implement eder
+ * - Template method final olduğu için değiştirilemez
+ *
+ * PATTERN: Template Method Pattern
+ * ALT SINIFLAR: CarTrip, BusTrip, WalkTrip
+ *
+ * TEMPLATE METHOD AKIŞI (executeTrip):
+ * 1. validate(start, end) - Ortak (implemented)
+ * 2. calculateRoute() - Ortak (implemented)
+ * 3. printReceipt(result) - Farklı (abstract, alt sınıflar implement eder)
+ *
+ * TEMEL METODLAR:
+ * - executeTrip(start, end): FINAL - Template method, değiştirilemez
+ * - validate(start, end): Node kontrolü yapar
+ * - printReceipt(result): ABSTRACT - Alt sınıflar implement etmeli
+ *
+ * KULLANIM:
+ * TripAlgorithm trip = new CarTrip(strategy);
+ * trip.executeTrip(istanbul, ankara);
+ * // Sırayla: validate → calculate → printReceipt (CarTrip versiyonu)
+ *
+ * AVANTAJLAR:
+ * - Kod tekrarı yok
+ * - Yeni araç eklemek kolay
+ * - İskelet korunur, detaylar değişir
+ */
+
 // [PATTERN: Template Method]
 // Algoritmanın iskeletini kurar. Alt sınıflar sadece "Fiş Yazdırma" (printReceipt) kısmını değiştirir.
 public abstract class TripAlgorithm {

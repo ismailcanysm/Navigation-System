@@ -7,8 +7,14 @@ import com.navigation.project.backend.template.CarTrip;
 import com.navigation.project.backend.template.TripAlgorithm;
 import com.navigation.project.backend.template.WalkTrip;
 
+/**
+ * Araç tipine göre farklı nesneler oluşturmamıza yarar
+ * Template ile bağlantılı çalışarak bu işlevi gerçekleştirir
+ * Templeate oluşturulacak nesnelerin iskeletini oluşturur
+ */
+
 // [PATTERN: Factory Method]
-// İstemci (Main veya Facade), "new CarTrip()" demek zorunda kalmaz.
+// İstemci (com.navigation.project.backend.Main veya Facade), "new CarTrip()" demek zorunda kalmaz.
 // Sadece tipi söyler (CAR), fabrika ona hazır nesneyi verir.
 public class TripFactory {
 

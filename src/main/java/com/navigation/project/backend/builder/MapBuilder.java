@@ -5,6 +5,12 @@ import com.navigation.project.backend.model.Edge;
 import com.navigation.project.backend.model.Node;
 import com.navigation.project.backend.model.NodeType;
 
+
+/**
+ * Şehir ve yol eklememize olanak tanır
+ * Her fonk. sonunda this döner ki zincirleme bir biçimde node ve yol oluşturalım
+ */
+
 // [PATTERN: Builder]
 // Karmaşık harita oluşturma sürecini, adım adım ve zincirleme (fluent) metodlarla basitleştirir.
 public class MapBuilder {

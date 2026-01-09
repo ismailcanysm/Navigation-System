@@ -2,6 +2,49 @@ package com.navigation.project.backend.proxy;
 
 import com.navigation.project.backend.model.Edge;
 
+/**
+ * MapManagerProxy - Harita Yönetim Proxy'si
+ *
+ * AMAÇ:
+ * MapManager'a erişimi kontrol eder ve yetki kontrolü yapar.
+ * Sadece admin kullanıcıların işlem yapmasını sağlar.
+ *
+ * NE İŞE YARAR:
+ * - Admin yetkisi kontrolü yapar
+ * - Yetkisiz erişimi engeller
+ * - Yetkili kullanıcıları MapManager'a yönlendirir
+ * - Security katmanı sağlar
+ *
+ * PATTERN: Proxy Pattern (Protection Proxy)
+ * İLİŞKİLİ SINIFLAR: MapManager, IMapManager
+ *
+ * TEMEL METODLAR:
+ * - setAdmin(isAdmin): Admin modunu ayarlar
+ * - isAdmin(): Admin durumunu döner
+ * - blockRoad(edge): Yetki kontrolü → realManager.blockRoad()
+ * - openRoad(edge): Yetki kontrolü → realManager.openRoad()
+ * - changeSpeed(edge, speed): Yetki kontrolü → realManager.changeSpeed()
+ *
+ * ÇALIŞMA AKIŞI:
+ * 1. İstemci proxy.blockRoad() çağırır
+ * 2. Proxy isAdmin kontrolü yapar
+ * 3. Admin değilse: "Yetki yok" mesajı, return
+ * 4. Admin ise: realManager.blockRoad() çağrılır
+ *
+ * KULLANIM:
+ * MapManagerProxy proxy = new MapManagerProxy();
+ * proxy.setAdmin(false);
+ * proxy.blockRoad(edge);  // "YETKİ YOK!" (engellendi)
+ *
+ * proxy.setAdmin(true);
+ * proxy.blockRoad(edge);  // Yol kapandı (izin verildi)
+ *
+ * AVANTAJLAR:
+ * - Merkezi yetki kontrolü
+ * - Gerçek nesneyi korur
+ * - İstemci kodu yetki kontrolü yapmak zorunda değil
+ */
+
 public class MapManagerProxy implements IMapManager{
     private MapManager realManager;
     private boolean isAdmin;

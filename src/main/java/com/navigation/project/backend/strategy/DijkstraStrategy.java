@@ -9,15 +9,56 @@ import com.navigation.project.backend.model.VehicleType;
 import java.util.*;
 
 /**
+ * DijkstraStrategy - Dijkstra Algoritması İmplementasyonu
+ *
+ * AMAÇ:
+ * Dijkstra algoritması ile en kısa yol hesaplar.
+ * Araç tipine göre süre hesaplaması yapar.
+ *
+ * NE İŞE YARAR:
+ * - Weighted graph'te en kısa yolu bulur
+ * - OPEN olmayan yolları kullanmaz
+ * - Araç tipine göre hız ve süre hesaplar
+ * - Priority Queue kullanarak optimize eder
+ *
+ * PATTERN: Strategy Pattern
+ * İLİŞKİLİ SINIFLAR: CityMap, Node, Edge, RouteCalculationResult
+ *
+ * ALGORİTMA ADIMLARI:
+ * 1. Başlangıç node'unun mesafesini 0 yap
+ * 2. Diğer tüm node'ların mesafesini sonsuz yap
+ * 3. Priority Queue kullan (en yakın node önce)
+ * 4. Her node için:
+ *    - Komşuları gez
+ *    - Sadece OPEN yolları kullan
+ *    - Daha kısa yol varsa güncelle
+ * 5. Hedefe ulaşınca dur
+ * 6. Previous map'inden yolu geri sar
+ * 7. Araç tipine göre süre hesapla
+ *
+ * SÜRE HESAPLAMA:
+ * - CAR: Yol hız limiti kullanılır
+ * - BUS: Max 80 km/h, her segment +5 dk durak
+ * - WALK: Sabit 5 km/h
+ * - Formül: time = (distance / effectiveSpeed) * 60 (dakika)
+ *
+ * TEMEL METODLAR:
+ * - calculateRoute(start, end, vehicle): Ana metod, RouteCalculationResult döner
+ * - buildResult(): Sonuç nesnesini oluşturur
+ * - calculateDuration(): Toplam süreyi hesaplar
+ * - findEdge(): İki node arası edge bulur
+ * - getOutgoingEdges(): Bir node'dan çıkan edge'leri döner
+ *
+ * KARMAŞIKLIK: O((V+E) log V)
+ * - V: Node sayısı
+ * - E: Edge sayısı
+ */
+
+/**
  * DijkstraStrategy - Dijkstra Algoritması
  *
- * Senaryo: En kısa mesafe + Süre hesaplama (Zaman = Mesafe / Hız)
- * Araç tipine göre süre hesaplar:
- * - CAR: Edge hız limitini kullanır
- * - BUS: Min(Edge hız, 80 km/h) + durak süreleri
- * - WALK: Sabit 5 km/h
- *
- * @author Kişi 2
+ * En kısa mesafe + Süre hesaplama (Zaman = Mesafe / Hız)
+ * Araç tipine göre süre hesaplar
  */
 public class DijkstraStrategy implements IRouteStrategy {
 
@@ -29,7 +70,7 @@ public class DijkstraStrategy implements IRouteStrategy {
 
     /**
      * Rota hesapla - ARAÇ TİPİNE GÖRE SÜRE HESAPLA
-     * Senaryo: Zaman = Mesafe / Hız formülü
+     * Zaman = Mesafe / Hız formülü
      */
     public RouteCalculationResult calculateRoute(Node startNode, Node endNode, VehicleType vehicle) {
         if (startNode == null || endNode == null) {
@@ -72,7 +113,7 @@ public class DijkstraStrategy implements IRouteStrategy {
             }
 
             for (Edge edge : getOutgoingEdges(map, current)) {
-                // SENARYO: Kapalı ve çalışma olan yolları kullanma
+                // Kapalı ve çalışma olan yolları kullanma
                 if (edge.getStatus() != EdgeStatus.OPEN) {
                     System.out.println("[Dijkstra]   Yol atlandı (Kapalı/Çalışma): " +
                             edge.getSource().getName() + " → " + edge.getDestination().getName());
@@ -97,7 +138,6 @@ public class DijkstraStrategy implements IRouteStrategy {
 
     /**
      * Sonuç oluştur - SÜRE HESAPLAMASI DAHİL
-     * Senaryo: Zaman = Mesafe / Hız
      */
     private RouteCalculationResult buildResult(
             Map<Node, Node> previousNodes,
@@ -124,10 +164,10 @@ public class DijkstraStrategy implements IRouteStrategy {
         // Mesafe
         double totalDistance = distances.get(endNode);
 
-        // SENARYO: Süreyi hesapla (Zaman = Mesafe / Hız)
+        // Süreyi hesapla (Zaman = Mesafe / Hız)
         double totalDuration = calculateDuration(path, vehicle);
 
-        System.out.println(String.format("[Dijkstra] ✅ Rota bulundu: %.1f km, %.1f dk (%s)",
+        System.out.println(String.format("[Dijkstra] Rota bulundu: %.1f km, %.1f dk (%s)",
                 totalDistance, totalDuration, vehicle));
 
         return new RouteCalculationResult(path, totalDistance, totalDuration);
@@ -135,7 +175,7 @@ public class DijkstraStrategy implements IRouteStrategy {
 
     /**
      * SÜRE HESAPLAMA - ARAÇ TİPİNE GÖRE
-     * Senaryo: Zaman = Mesafe / Hız (dakika)
+     * Zaman = Mesafe / Hız (dakika)
      */
     private double calculateDuration(List<Node> path, VehicleType vehicle) {
         if (path.size() < 2) return 0;
@@ -157,7 +197,7 @@ public class DijkstraStrategy implements IRouteStrategy {
 
                 switch (vehicle) {
                     case CAR:
-                        // SENARYO: Araba edge'deki hız limitini kullanır
+                        // Araba edge'deki hız limitini kullanır
                         effectiveSpeed = edgeSpeedLimit;
                         break;
 
@@ -170,7 +210,7 @@ public class DijkstraStrategy implements IRouteStrategy {
                         break;
 
                     case WALK:
-                        // SENARYO: Yürüyüş sabit 5 km/h
+                        // Yürüyüş sabit 5 km/h
                         effectiveSpeed = 5;
                         break;
 
@@ -178,7 +218,7 @@ public class DijkstraStrategy implements IRouteStrategy {
                         effectiveSpeed = 100;
                 }
 
-                // SENARYO: Zaman = Mesafe / Hız (saat) * 60 = dakika
+                // Zaman = Mesafe / Hız (saat) * 60 = dakika
                 double segmentTime = (distance / effectiveSpeed) * 60;
                 totalTime += segmentTime;
 

@@ -6,6 +6,34 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 /**
+ * MainApp - JavaFX Uygulama Başlatıcı
+ *
+ * AMAÇ:
+ * JavaFX uygulamasını başlatır ve ana pencereyi oluşturur.
+ *
+ * NE İŞE YARAR:
+ * - JavaFX Application sınıfını extend eder
+ * - Stage (pencere) oluşturur ve yapılandırır
+ * - MainController'ı başlatır
+ * - Scene oluşturur ve gösterir
+ *
+ * İLİŞKİLİ SINIFLAR: MainController
+ *
+ * TEMEL METODLAR:
+ * - start(Stage): JavaFX başlatma metodu
+ * - stop(): Uygulama kapatılırken çağrılır
+ * - main(String[]): JVM başlangıç noktası
+ *
+ * PENCERE AYARLARI:
+ * - Başlık: "Navigasyon Sistemi - 10 Design Patterns"
+ * - Boyut: 1000x700
+ * - Minimum Boyut: 800x600
+ *
+ * KULLANIM:
+ * java MainApp
+ */
+
+/**
  * MainApp - Uygulama Başlatıcı
  *
  * Yeni UI: Tab bazlı, liste görünümü

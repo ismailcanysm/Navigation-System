@@ -3,6 +3,32 @@ package com.navigation.project.backend.command;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * CommandInvoker - Komut Yöneticisi
+ *
+ * AMAÇ:
+ * Komutları çalıştırır ve komut geçmişini yönetir.
+ * Undo/Redo işlemlerini koordine eder.
+ *
+ * Komutları çalıştırır (execute)
+ * Komut geçmişini tutar (history)
+ * Geri alma işlemi yapar (undo)
+ * Stack mantığıyla son komutu yönetir
+ *
+ * TEMEL METODLAR:
+ * execute(command): Komutu çalıştır ve geçmişe ekle
+ * undo(): Son komutu geri al
+ * clear(): Geçmişi temizle
+ * size(): Geçmiş boyutunu döner
+ *
+ * ÖRNEK:
+ * CommandInvoker invoker = new CommandInvoker();
+ * invoker.execute(cmd1);
+ * invoker.execute(cmd2);
+ * invoker.undo();  // cmd2 geri alındı
+ * invoker.undo();  // cmd1 geri alındı
+ */
+
 // Komutları çalıştırır ve geçmişi tutar
 public class CommandInvoker {
     // Komut geçmişi (Stack mantığı ile çalışır)

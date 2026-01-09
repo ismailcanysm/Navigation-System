@@ -1,9 +1,24 @@
 package com.navigation.project.backend.command;
 
 /**
- * Tüm komutların uygulaması gereken metodlar tanımlanır
- * her komut 1 işlemi temsil eder ve geri alınabilir
- * işlemleri nesneler olarak kapsüller
+ * ICommand - Command Pattern Interface
+ *
+ * AMAÇ:
+ * Tüm komut sınıfları için ortak davranış tanımlar.
+ * Geri alınabilir işlemler için standart bir yapı sağlar.
+ *
+ * NE İŞE YARAR:
+ * - İşlemleri nesne olarak temsil eder
+ * - Execute/Undo mekanizması sunar
+ * - Komut geçmişi tutulmasını sağlar
+ *
+ * PATTERN: Command Pattern
+ * IMPLEMENTASYONLAR: BlockRoadCommand, SetSpeedLimitCommand
+ *
+ * GEREKLI METODLAR:
+ * - execute(): Komutu çalıştırır
+ * - undo(): Komutu geri alır
+ * - commitDescription(): Komut açıklaması döner
  */
 
 public interface ICommand {

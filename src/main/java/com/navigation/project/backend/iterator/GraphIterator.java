@@ -7,9 +7,42 @@ import com.navigation.project.backend.model.NodeType;
 import java.util.List;
 
 /**
- * interface yardımı ile node'ları gezer
- * sadece gezinme işlemini yapar
- * farklı gezinme işlemleri eklenebilir
+ * GraphIterator - Graph (Harita) İteratoru
+ *
+ * AMAÇ:
+ * CityMap'teki node'ları güvenli ve bağımsız şekilde gezinir.
+ *
+ * NE İŞE YARAR:
+ * - Node koleksiyonunu array'e çevirir
+ * - Sıralı gezinme sağlar
+ * - Tip bazlı filtreleme yapabilir
+ * - Mevcut pozisyonu takip eder
+ * - Başa sarma (reset) imkanı sunar
+ *
+ * PATTERN: Iterator Pattern
+ * İLİŞKİLİ SINIFLAR: CityMap, Node
+ *
+ * CONSTRUCTOR'LAR:
+ * - GraphIterator(): Tüm node'ları gezer
+ * - GraphIterator(NodeType): Sadece belirli tipteki node'ları gezer
+ *
+ * TEMEL METODLAR:
+ * - hasNext(): position < array.length kontrolü
+ * - next(): Mevcut node'u döner ve position'ı artırır
+ * - reset(): position = 0 yapar
+ *
+ * KULLANIM:
+ * INodeIterator iterator = new GraphIterator();
+ * while (iterator.hasNext()) {
+ *     Node node = iterator.next();
+ *     System.out.println(node.getName());
+ * }
+ * iterator.reset();  // Baştan başla
+ *
+ * AVANTAJLAR:
+ * - CityMap'in iç yapısı değişirse iterator kodu değişmez
+ * - Güvenli gezinme (ConcurrentModification yok)
+ * - Filtreleme desteği
  */
 
 public class GraphIterator implements INodeIterator {

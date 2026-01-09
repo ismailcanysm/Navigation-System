@@ -17,6 +17,14 @@ import com.navigation.project.backend.strategy.DijkstraStrategy;
 import com.navigation.project.backend.strategy.IRouteStrategy;
 import com.navigation.project.backend.template.TripAlgorithm;
 
+/**
+ * NavigationFacade - Facade Pattern İmplementasyonu
+ *
+ * AMAÇ:
+ * Karmaşık backend sistemini basit ve kullanıcı dostu bir API ile sunar.
+ * 10 farklı design pattern'i koordine eder ve tek noktadan erişim sağlar.
+ */
+
 public class NavigationFacade {
     private CityMap map;
     private TrafficNotifier notifier;
@@ -29,6 +37,7 @@ public class NavigationFacade {
         this.invoker = new CommandInvoker();
         this.proxy = new MapManagerProxy();
         this.strategy = new DijkstraStrategy();
+        this.map = CityMap.getInstance();
     }
 
     // Sistemi başlat
@@ -40,7 +49,7 @@ public class NavigationFacade {
                 .addRoad("B", "C", 15, 50)
                 .build();
 
-        this.map = CityMap.getInstance();
+        //this.map = CityMap.getInstance();
         System.out.println("Sistem hazır.");
     }
 

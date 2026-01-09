@@ -5,9 +5,18 @@ import com.navigation.project.backend.model.EdgeStatus;
 import com.navigation.project.backend.observer.TrafficNotifier;
 
 /**
- * bir yolu kapatma komutunu temsil eder
- * execute() => yolu kapatır
- * undo() => yolu tekrar açar
+ * Yol kapatma işlemini geri alınabilir şekilde gerçekleştirir.
+ * PATTERN: Command Pattern
+ *
+ * ÇALIŞMA AKIŞI:
+ * 1. Constructor: Edge ve eski durumu sakla
+ * 2. execute(): Yolu kapat, bildirim gönder
+ * 3. undo(): Eski duruma döndür, bildirim gönder
+ *
+ * ÖRNEK:
+ * ICommand cmd = new BlockRoadCommand(edge, notifier);
+ * invoker.execute(cmd);  // Yol kapandı
+ * invoker.undo();        // Yol eski haline döndü
  */
 
 public class BlockRoadCommand implements ICommand{

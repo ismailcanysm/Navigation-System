@@ -6,6 +6,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * TrafficNotifier - Observer Pattern Subject (Yayıncı)
+ *
+ * AMAÇ:
+ * Observer'ları yönetir ve değişiklikler olduğunda bildirir.
+ * Pub/Sub mekanizması sağlar.
+ *
+ * NE İŞE YARAR:
+ * - Observer listesini tutar
+ * - Observer ekleme/çıkarma işlemleri yapar
+ * - Değişiklik olduğunda tüm observer'lara bildirim gönderir
+ * - Command pattern ile entegre çalışır
+ *
+ * PATTERN: Observer Pattern (Subject/Publisher)
+ * İLİŞKİLİ SINIFLAR: ITrafficObserver, BlockRoadCommand, SetSpeedLimitCommand
+ *
+ * TEMEL METODLAR:
+ * - attach(observer): Observer ekler
+ * - detach(observer): Observer çıkarır
+ * - notifyRoadStatusChanged(edge, msg): Yol durumu bildirimi gönderir
+ * - notifySpeedLimitChanged(edge, old, new): Hız değişikliği bildirimi
+ * - cleanObservers(): Tüm observer'ları temizler
+ * - getObserverCount(): Observer sayısını döner
+ *
+ * KULLANIM:
+ * TrafficNotifier notifier = new TrafficNotifier();
+ * notifier.attach(userPanel1);
+ * notifier.attach(userPanel2);
+ * notifier.notifyRoadStatusChanged(edge, "Yol kapandı");
+ * // userPanel1 ve userPanel2'ye bildirim gitti!
+ *
+ * AVANTAJLAR:
+ * - Otomatik bildirim (manuel notify gerekmez)
+ * - Gevşek bağlılık (loose coupling)
+ * - Dinamik observer ekleme/çıkarma
+ */
+
+/**
  * Subject ve Observable rolündedir
  * Trafik değişikliklerini tüm kayıtlı kullanıcılara bildirir
  */

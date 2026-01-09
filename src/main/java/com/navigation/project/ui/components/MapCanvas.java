@@ -12,6 +12,34 @@ import javafx.scene.text.FontWeight;
 import java.util.*;
 
 /**
+ * MapCanvas - Harita Canvas Bileşeni (KULLANILMIYOR)
+ *
+ * AMAÇ:
+ * Haritayı görsel olarak çizer (şehirler ve yollar).
+ *
+ * NOT:
+ * Bu sınıf mevcut uygulamada kullanılmıyor.
+ * Yerine tab-based TableView sistemi kullanılıyor.
+ * Gelecekteki görsel harita özelliği için saklanıyor.
+ *
+ * NE İŞE YARAR (GELECEKTEKİ KULLANIM):
+ * - Canvas üzerinde harita çizer
+ * - Şehirleri mavi dairelerle gösterir
+ * - Yolları çizgilerle gösterir
+ * - Rota vurgulaması yapar (yeşil)
+ * - Yol durumlarını renklerle gösterir
+ *
+ * İLİŞKİLİ SINIFLAR: Node, Edge
+ *
+ * RENK KODLARI:
+ * - OPEN: Gri çizgi
+ * - CLOSED: Kırmızı çizgi
+ * - UNDER_CONSTRUCTION: Turuncu çizgi
+ * - Highlighted Route: Yeşil kalın çizgi
+ * - Nodes: Mavi daireler
+ */
+
+/**
  * MapCanvas - Harita Çizim Komponenti
  *
  * SENARYO UYUMLU: 3 EdgeStatus gösterimi

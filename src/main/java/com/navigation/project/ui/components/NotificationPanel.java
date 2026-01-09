@@ -11,6 +11,26 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 /**
+ * NotificationPanel - Bildirim Paneli (KULLANILMIYOR)
+ *
+ * AMAÇ:
+ * Bildirimleri gösterir (alternatif implementasyon).
+ *
+ * NOT:
+ * Bu sınıf mevcut uygulamada kullanılmıyor.
+ * Yerine MainController'da VBox kullanılıyor.
+ * Alternatif bildirim sistemi için saklanıyor.
+ *
+ * NE İŞE YARAR (ALTERNATİF KULLANIM):
+ * - ScrollPane içinde bildirimler gösterir
+ * - Renkli etiketler kullanır
+ * - Zaman damgası ekler
+ * - Max 10 bildirim tutar
+ *
+ * İLİŞKİLİ SINIFLAR: MainController
+ */
+
+/**
  * NotificationPanel - Bildirim Paneli
  *
  * Observer Pattern'den gelen bildirimleri gösterir.
